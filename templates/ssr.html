@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>New snippet 887 - Material Design for Bootstrap</title>
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <style>
+        pre {
+            outline: 1px solid #ccc;
+            padding: 5px;
+            margin: 5px;
+        }
+
+        .string {
+            color: green;
+        }
+
+        .number {
+            color: darkorange;
+        }
+
+        .boolean {
+            color: blue;
+        }
+
+        .null {
+            color: magenta;
+        }
+
+        .key {
+            color: red;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+
+            result = null
+
+            function JsonToHtml(data) {
+                // 若传入数值为json，则转换为字符串
+                var str = typeof data === 'string' ? str : JSON.stringify(data);
+                //将一些需要添加颜色的值匹配出来
+                str = str.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+                    var cls = 'number';
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) {
+                            cls = 'key';
+                        } else {
+                            cls = 'string';
+                        }
+                    } else if (/true|false/.test(match)) {
+                        cls = 'boolean';
+                    } else if (/null/.test(match)) {
+                        cls = 'null';
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                });
+                // 下面将进行换行匹配，包括,后、{后、}前
+                var indent = 0, // 缩进数
+                    line = '</br>', // 换行
+                    indentChar = '&nbsp;&nbsp;&nbsp;&nbsp;', // 缩进量
+                    inArray = false, // 是否在数组里
+                    inObject = true; // 是否在对象里
+                // 将需要换行的元素匹配出来
+                // 这里需要注意，逗号,后若有{则不需要换行，此时我们需要将其匹配出来
+                str = str.replace(/((,(\t)*[^\{])|(,(\t)*\{)|\}|\{|\]|\[)/g, match => {
+                    var str = '';
+                    if (match === ']') {
+                        inArray = false;
+                        return match;
+                    } else if (match === '[') {
+                        inArray = true;
+                        inObject = false;
+                        return match;
+                    }
+                    // 若为{或者,{，则换行后缩进增加
+                    if (match === '{' || /,(\t)*\{/.test(match)) {
+                        indent++;
+                        inObject = true;
+                        // 若为}，则换行后缩进减少
+                    } else if (match === '}') {
+                        indent--;
+                        inObject = false;
+                    }
+                    // 转换缩进
+                    for (var i = 0, tab = ''; i < indent; i++) {
+                        tab += indentChar;
+                    }
+                    // 若为}，则先换行后进行缩进
+                    if (match === '}') {
+                        str = line + tab + match;
+                        // 若为,后不跟{，则在,后进行换行缩进
+                    } else if (/,(\t)*[^\{]/.test(match)) {
+                        str = (inArray && !inObject) ? match : (',' + line + tab + match.substring(1));
+                        // 其余情况，则在最后进行换行缩进
+                    } else {
+                        str = match + line + tab;
+                    }
+                    return str;
+                });
+                return ('<div class="json">' + str + '</div>');
+            }
+
+            $("#submit").click(function () {
+                ssr_text = $("#ssr").val().trim()
+                if (ssr_text == null || ssr_text.trim() == '') {
+                    console.log("no valid ssr text")
+                } else {
+                    $.ajax({
+                        type: "POST",
+                        url: "/ssr2json",
+                        contentType: "application/json;charset=utf-8",
+                        dataType: "json",
+                        data: {'text': ssr_text, 'method': 'post'},
+                        success: function (msg) {
+                            result = JSON.stringify(msg, null, 2);
+                            output = JsonToHtml(msg)
+                            // console.log(output)
+                            $("#output").html(output)
+                            // $("#output").val(JSON.stringify(output, null, 4))
+                        },
+                    });
+                }
+            });
+
+            $("#save").click(function () {
+                console.log("save cfg json")
+                if (result == null) {
+                    console.log("no data to save")
+                } else {
+                    var content = result
+                    var data = new Blob([content], {type: "text/plain;charset=UTF-8"});
+                    var downloadUrl = window.URL.createObjectURL(data);
+                    var anchor = document.createElement("a");
+                    anchor.href = downloadUrl;
+                    anchor.download = "shadowsocksR.json";
+                    anchor.click();
+                    window.URL.revokeObjectURL(data);
+                }
+            })
+        });
+
+    </script>
+
+</head>
+<body>
+<div style="margin-top: 40px; margin-left: 5%">
+    <div class="row" style="float: left; position: relative; width: 43%;">
+        <div class="col s12">
+            <div class="row">
+                <div class="input-field col s6" style="width: 90%">
+                    <i class="material-icons prefix">mode_edit</i>
+                    <textarea id="ssr" class="materialize-textarea"></textarea>
+                    <label for="ssr">input ssr</label>
+                </div>
+            </div>
+            <div class="col s6" style="width: 90%">
+                <button id="submit" class="btn waves-effect waves-light" type="submit" style="width: 100%">Submit
+                    <i class="material-icons right">send</i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" style="float: left; position: relative; width: 30%;">
+        <div class="row">
+            <div class="col s12">
+                <div class="row">
+                    <div class="input-field col s12 card-panel">
+                        <div id="output" class="blue-text text-darken-2"></div>
+                    </div>
+                    <button id="save" class="btn waves-effect waves-light blue" type="submit" style="width: 100%">Save
+                        <i class="material-icons left">cloud</i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
