@@ -102,3 +102,13 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+
+# idea
+.idea/
+
+# MAC FS
+.DS_Store
+
+# layui
+layui-v2.5.4.zip
